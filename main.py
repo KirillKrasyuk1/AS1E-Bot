@@ -3,6 +3,7 @@ import time
 import requests
 from bs4 import BeautifulSoup as BS
 import schedule
+from threading import Thread
 
 
 bot = telebot.TeleBot('5502855452:AAEDWiH4cF6PQHaVMPV0hOY5cC-9zLhuY5E')
