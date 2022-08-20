@@ -50,26 +50,31 @@ def answer(message):
             bot.send_message(message.chat.id, a)
 
 # тестирование таймера
-# def weather():
-#     city = 'самара'
-#     chat_id = id_to_test
-#     response = requests.get(f'https://sinoptik.ua/погода-{city.lower()}')
-#     html_response = BS(response.content, 'html.parser')
-#     a = html_response.find('div', id='bd1')
-#     if a == None:
-#         bot.send_message(chat_id, 'Такого города не существует или его название написано неправильно')
-#     else:
-#         a = a.select('.temperature')[0].text
-#         bot.send_message(chat_id, a)
-#
-#
-# schedule.every().day.at("18:39").do(weather)
-#
-# while True:
-#     schedule.run_pending()
-#     time.sleep(1)
+def weather():
+    city = 'самара'
+    # ставлю свой id для теста 
+    chat_id = 494790051
+    response = requests.get(f'https://sinoptik.ua/погода-{city.lower()}')
+    html_response = BS(response.content, 'html.parser')
+    a = html_response.find('div', id='bd1')
+    if a == None:
+        bot.send_message(chat_id, 'Такого города не существует или его название написано неправильно')
+    else:
+        a = a.select('.temperature')[0].text
+        bot.send_message(chat_id, a)
 
-bot.polling(none_stop=True)
+# обоварачиваем режим ожидания в функцию, чтобы запустить в отдельном потоке  
+def schedule_checker():
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
+
+
+schedule.every().day.at("18:39").do(weather)
+# сначала запуск в отдельном потоке, потом ожидание бота. В обратном порядке не работает
+Thread(target=schedule_checker).start()
+bot.polling()
+
 
 # if button2 == 'курс валют':
 #     bot.send_message(message.chat.id, 'Отлично, теперь я буду присылать тебе курс основых валют')
