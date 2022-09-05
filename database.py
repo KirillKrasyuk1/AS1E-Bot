@@ -26,3 +26,7 @@ class Database:
         with self.connection:
             return self.cursor.execute('UPDATE users SET (city) = (?) WHERE (user_id) = (?)', (city, user_id,))
 
+    def get_time_and_city(self, user_id):
+        with self.connection:
+            response =  self.cursor.execute('SELECT time, city FROM users WHERE user_id = ?', (user_id, )).fetchall()
+            return response
