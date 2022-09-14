@@ -1,15 +1,13 @@
 
 from aiogram import Bot, Dispatcher, executor, types
 import time
-import requests
-from bs4 import BeautifulSoup as BS
 import schedule
 import sqlite3
 import asyncio
 import aioschedule
 from database import Database
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-
+from WeatherForTheBot import parsing_weather
 
 sched = AsyncIOScheduler()
 bot = Bot('5502855452:AAEDWiH4cF6PQHaVMPV0hOY5cC-9zLhuY5E')
@@ -41,55 +39,40 @@ async def greeting(message):
     # button3 = 'быстроновости'
     keyboard.add(button1, button2)
     await bot.send_message(message.from_user.id,
-                     str(message.from_user.id) + 'Привет, я твой умный помощник AS1E! Я умею показывать погоду на сегодня, курс валют и быстроновости.'
+                     'Привет, я твой умный помощник AS1E! Я умею показывать погоду на сегодня, курс валют и быстроновости.'
                      ' Выбери что из этого ты хочешь получать каждый день. P.S. чтобы увидеть список команд напиши /help.',
                      reply_markup=keyboard)
+#TODO разбить время на часы минуты секунды и вставить в декоратор(50 сточка)
 
 
-@dp.message_handler(commands=['test'])
+@dp.message_handler(content_types=['text'])
+async def ansswer(message):
+    if message.text == 'погода':
+        await bot.send_message(message.chat.id, 'Напииште название свего города через восклицательный знак')
+    if message.text[0] == '!':
+        city = message.text[1:].lower()
+        parsing_try = parsing_weather(city=city)
+        if parsing_try != None:
+            database.add_city(city=city, user_id=message.chat.id)
+            await bot.send_message(message.chat.id, 'Введите время в которое хотите получать рассылку. Например чч:мм')
+        else:
+            await bot.send_message(message.chat.id, 'Такого города не существует или вы ввели его название с ошибкой. Попробуйте еще раз.')
+    if message.text[2] == ':':
+        t = message.text + ':00'
+        database.add_time(time=t, user_id=message.chat.id)
+        await bot.send_message(message.chat.id, 'Отлично!')
+        await mailing(message)
 async def mailing(message):
     time, city = database.get_time_and_city(user_id=message.from_user.id)[0]
-
-    @sched.scheduled_job(trigger='cron', day='*', hour='*', minute='*', second='*', id=str(message.from_user.id))
+    hour = time[:2]
+    minute = time[3:5]
+    @sched.scheduled_job(trigger='cron', day='*', hour=hour, minute=minute, second='00', id=str(message.from_user.id))
     async def timed_job():
-        await bot.send_message(message.from_user.id, 'msg')
+        weather_str = parsing_weather(city=city)
+        await bot.send_message(message.chat.id, weather_str)
 
     sched.start()
 
-async def weather(city, chat_id):
-    response = requests.get(f'https://sinoptik.ua/погода-{city}')
-    html_response = BS(response.content, 'html.parser')
-    a = html_response.find('div', id='bd1')
-    if a == None:
-        await bot.send_message(chat_id, 'Такого города не существует или его название написано неправильно')
-    else:
-        a = a.select('.temperature')[0].text
-        await bot.send_message(chat_id, a)
 
-        # if message.text == 'погода':
-        #     await bot.send_message(message.chat.id, 'Напииште название свего города через восклицательный знак')
-        # if message.text[0] == '!':
-        #     city = message.text[1:].lower()
-        #     database.add_city(city=city, user_id=message.chat.id)
-        #     await bot.send_message(message.chat.id, 'Введите время в которое хотите получать рассылку.')
-        # if message.text[2] == ':':
-        #     t = message.text + ':00'
-        #     await bot.send_message(message.chat.id, 'Отлично!')
-        #     database.add_time(time=t, user_id=message.chat.id)
-
-# async def mailing(t, city, chat_id):
-#     aioschedule.every().day.at(t).do(weather, city=city, chat_id=chat_id)
-#     while True:
-#         await aioschedule.run_pending()
-#         await asyncio.sleep(1)
-
-# async def on_startup(t, city, chat_id):
-#     asyncio.create_task(mailing(t, city, chat_id))
-
+#TODO здесь я удалил погоду
 executor.start_polling(dp, skip_updates=False)
-# @bot.message_handler(content_types=['text'])
-# async def valutes(message):
-#     if button2 == 'курс валют':
-#         bot.send_message(message.chat.id, 'Отлично, теперь я буду присылать тебе курс основых валют')
-# bot.send_message(message.chat.id, 'Хочешь воспользоваться другими моими функциями')
-
